@@ -5,18 +5,23 @@
 ```bash
 git clone https://github.com/gaddyh/trajectory-analysis
 cd trajectory-analysis
-pip install -r requirements.txt
-python analyze_one.py
+python3 scripts/analyze_one.py
 ```
 
 Analyzes a single Tau2 simulation and produces a deterministic TrajectoryReport explaining outcome, reward breakdown, failure channel, root cause, and impact.
 
 ## Example Output
 
-Running:
-
+**Single run:**
 ```bash
-python analyze_one.py
+python3 scripts/analyze_one.py
+```
+
+**Dataset analysis:**
+```bash
+python3 scripts/analyze_dataset.py \
+  data/raw/simulations/baseline_retail_100/results.json \
+  --start 0 --limit 100
 ```
 
 Produces a deterministic TrajectoryReport:
@@ -108,31 +113,57 @@ The goal is to evaluate observable agent behavior.
 
 Implemented:
 
-- Tau2 task loading
-- Expected vs observed trajectory extraction
-- Action matching
-- Argument matching
-- Missing action detection
-- Extra action detection
-- Reward breakdown analysis
-- Failure channel diagnosis
-- Deterministic trajectory reports
+* Tau2 task loading
+* Expected vs observed trajectory extraction
+* Action matching
+* Argument matching
+* Missing action detection
+* Extra action detection
+* Reward breakdown analysis
+* Failure channel diagnosis
+* Deterministic trajectory reports
+* Dataset-level analysis
+* Failure classification
+* Root-cause extraction
+* Trajectory fidelity metrics
+* Read / Write coverage metrics
+* Benchmark issue detection
 
 Current reports explain:
 
-- Outcome
-- Reward breakdown
-- Primary failure channel
-- Root cause
-- Impact
-- Trajectory divergence
+* Outcome
+* Reward breakdown
+* Primary failure channel
+* Root cause
+* Impact
+* Trajectory variation
+* Trajectory fidelity
+* Read coverage
+* Write coverage
+
+Completed:
+
+* Dataset-wide aggregation (baseline_retail_100)
+* Failure distributions
+* Reward-channel distributions
+* Root-cause summaries
+* Detection of benchmark-reference deviations
+
+Current research questions:
+
+* Which failures occur despite high trajectory fidelity?
+* Which successful runs exhibit large trajectory variation?
+* Which trajectory variations are beneficial versus harmful?
+* How strongly does trajectory fidelity correlate with benchmark success?
 
 Next milestone:
 
-- Dataset-wide aggregation across 100 simulations
-- Failure distributions
-- Failure hotspots
-- Representative failure examples
+* Failure hotspot visualization
+* Failure heatmaps
+* Representative failure-path mining
+* Behavioral clustering of successful and failed trajectories
+* Cross-benchmark validation beyond Tau2
+
 
 ---
 
