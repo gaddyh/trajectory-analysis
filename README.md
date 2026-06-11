@@ -179,6 +179,7 @@ The reasoning behind this framework is documented session by session:
 # Core Question
 
 How much additional insight can trajectory analysis and reward-channel analysis provide beyond outcome metrics alone?
+
 ---
 
 # Dataset
