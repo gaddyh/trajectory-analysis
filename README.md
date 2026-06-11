@@ -18,13 +18,45 @@ Inspired by recent work on AI evaluation and trajectory analysis, this project a
 
 The goal is not to evaluate prompts.
 
-The goal is to evaluate agent behavior.
+The goal is to evaluate observable agent behavior.
+
+---
+
+## Current Status
+
+Implemented:
+
+- Tau2 task loading
+- Expected vs observed trajectory extraction
+- Action matching
+- Argument matching
+- Missing action detection
+- Extra action detection
+- Reward breakdown analysis
+- Failure channel diagnosis
+- Deterministic trajectory reports
+
+Current reports explain:
+
+- Outcome
+- Reward breakdown
+- Primary failure channel
+- Root cause
+- Impact
+- Trajectory divergence
+
+Next milestone:
+
+- Dataset-wide aggregation across 100 simulations
+- Failure distributions
+- Failure hotspots
+- Representative failure examples
 
 ---
 
 # Core Question
 
-Can trajectory analysis explain agent failures better than outcome metrics alone?
+Can trajectory analysis and reward-channel analysis explain agent failures better than outcome metrics alone?
 
 ---
 
@@ -287,6 +319,10 @@ Example:
 {
   "success": false,
   "reward": 0.0,
+  "reward_breakdown": {
+    "DB": 1.0,
+    "NL_ASSERTION": 0.0
+  },
   "failure_channel": "NL_ASSERTION",
   "primary_failure": "communication",
   "root_cause": "Required information `10` was not communicated.",
@@ -401,8 +437,8 @@ We aim to understand agent behavior before attempting to improve it.
 
 Outcome metrics tell us whether an agent succeeded.
 
-Trajectory analysis tells us why.
+Reward breakdowns tell us where success or failure occurred.
 
-Reward breakdowns tell us where.
+Trajectory analysis helps explain why.
 
-Failure reports tell us how.
+Failure reports turn benchmark results into actionable engineering insights.
