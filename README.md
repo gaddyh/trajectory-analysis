@@ -178,8 +178,7 @@ The reasoning behind this framework is documented session by session:
 
 # Core Question
 
-Can trajectory analysis and reward-channel analysis explain agent failures better than outcome metrics alone?
-
+How much additional insight can trajectory analysis and reward-channel analysis provide beyond outcome metrics alone?
 ---
 
 # Dataset
