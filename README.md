@@ -40,6 +40,8 @@ Tau2 is particularly useful because it provides:
 * Tool outputs
 * Environment state
 * Final reward
+* Reward breakdowns
+* Natural language assertions
 
 This allows us to compare:
 
@@ -61,13 +63,13 @@ We do not evaluate a prompt.
 
 We evaluate an agent system.
 
-System:
-
+```text
 User
 → Agent
 → Tools
 → Environment
 → Outcome
+```
 
 The entire system is the unit of evaluation.
 
@@ -81,10 +83,14 @@ Each Tau2 task defines:
 * Expected actions
 * Environment constraints
 * Success criteria
+* Communication requirements
 
 Example:
 
-Exchange a delivered keyboard and thermostat for different variants.
+```text
+Exchange a delivered keyboard and thermostat
+for different variants.
+```
 
 Success is defined by the benchmark.
 
@@ -96,11 +102,13 @@ A trajectory is the sequence of actions taken by the agent.
 
 Example:
 
+```text
 Authenticate User
 → Retrieve Order
 → Retrieve Product
 → Clarify Preferences
 → Execute Exchange
+```
 
 Trajectory analysis focuses on this sequence rather than only the final outcome.
 
@@ -115,65 +123,140 @@ For every trajectory we collect:
 * Tool arguments
 * Tool outputs
 * State changes
-* Final reward
+* Reward signals
 
 This produces a complete behavioral trace.
 
 ---
 
-## Step 5: Localize Failures
+## Step 5: Separate Outcome From Explanation
 
-Instead of asking:
+A reward tells us whether a run passed.
 
-"Did the task fail?"
-
-We ask:
-
-"Where did the trajectory diverge from expected behavior?"
+It does not tell us why.
 
 Example:
 
+```text
+Reward = 0.0
+```
+
+This alone is not actionable.
+
+Instead we decompose the outcome into reward channels.
+
+Example:
+
+```text
+DB = 1.0
+NL_ASSERTION = 0.0
+Reward = 0.0
+```
+
+This reveals that the database mutation succeeded while the communication requirement failed.
+
+---
+
+## Step 6: Localize Failures
+
+Instead of asking:
+
+```text
+Did the task fail?
+```
+
+We ask:
+
+```text
+Why did the task fail?
+```
+
+Example:
+
+```text
 Authentication ✓
-
 Order Retrieval ✓
-
 Product Retrieval ✓
-
-Clarification ✓
-
-Exchange Tool ✓
-
-Variant Selection ✗
+Exchange ✓
+Communication ✗
+```
 
 This converts a binary failure into an explainable failure.
 
 ---
 
-## Step 6: Build a Failure Taxonomy
+## Step 7: Build a Failure Taxonomy
 
 Every failure should be assigned to a behavioral category.
 
-Initial taxonomy:
+Current taxonomy:
 
-* Authentication Failure
-* Retrieval Failure
-* Grounding Failure
-* Clarification Failure
-* Planning Failure
-* Tool Selection Failure
-* Argument Selection Failure
-* State Transition Failure
+### Communication Failure
+
+Required information was not communicated correctly.
+
+Example:
+
+```text
+Expected:
+"There are 10 available t-shirt options."
+
+Actual:
+"There are 12 t-shirt options."
+```
+
+### Retrieval Failure
+
+Required information was never collected.
+
+### Grounding Failure
+
+Information was collected but interpreted incorrectly.
+
+### Tool Selection Failure
+
+The wrong tool was selected.
+
+### Argument Selection Failure
+
+The correct tool was selected with incorrect arguments.
+
+### State Transition Failure
+
+The final environment state did not match expectations.
+
+### Trajectory Divergence
+
+The agent followed an alternative information-gathering strategy.
+
+Example:
+
+```text
+Expected:
+get_product_details(...)
+
+Actual:
+list_all_product_types(...)
+```
+
+Trajectory divergence may or may not affect reward.
 
 The taxonomy should evolve as new failure modes are discovered.
 
 ---
 
-## Step 7: Define Metrics
+## Step 8: Define Metrics
 
 ### Outcome Metrics
 
 * Reward
 * Success Rate
+
+### Reward Diagnostics
+
+* Reward Breakdown
+* DB Pass Rate
+* NL Assertion Pass Rate
 
 ### Trajectory Metrics
 
@@ -181,10 +264,10 @@ The taxonomy should evolve as new failure modes are discovered.
 * Action Precision
 * Tool Selection Accuracy
 * Argument Accuracy
-* State Transition Accuracy
 * Trajectory Length
 * Read / Write Ratio
-* Confirmation Before Action
+* Extra Actions
+* Missing Actions
 
 ### Failure Metrics
 
@@ -194,56 +277,63 @@ The taxonomy should evolve as new failure modes are discovered.
 
 ---
 
-## Step 8: Generate Trajectory Reports
+## Step 9: Generate Trajectory Reports
 
-For every simulation:
-
-Output:
-
-TrajectoryReport
+For every simulation we generate a deterministic TrajectoryReport.
 
 Example:
 
+```json
 {
-"success": false,
-"reward": 0.0,
-"failure_type": "argument_selection",
-"failure_location": "exchange_delivered_order_items",
-"summary": "Selected incorrect keyboard variant after successful retrieval and clarification."
+  "success": false,
+  "reward": 0.0,
+  "failure_channel": "NL_ASSERTION",
+  "primary_failure": "communication",
+  "root_cause": "Required information `10` was not communicated.",
+  "impact": "Database state was correct, but communication failed."
 }
+```
 
-The report should explain the failure in human-readable language.
+The report should explain:
+
+* What happened
+* Why it failed
+* Which reward channel failed
+* Whether trajectory divergence occurred
 
 ---
 
-## Step 9: Aggregate Across the Dataset
+## Step 10: Aggregate Across the Dataset
 
-Run the evaluator across 100 simulations.
+Run the evaluator across a benchmark slice.
 
 Compute:
 
-* Failure Frequency
+* Success Rate
 * Failure Distribution
+* Reward Channel Distribution
 * Common Failure Paths
 * Failure Hotspots
 
 Example:
 
-Grounding: 34%
+```text
+Communication: 34%
 
 Argument Selection: 29%
 
-Planning: 18%
+Grounding: 18%
 
 Tool Selection: 11%
 
 Other: 8%
+```
 
 The goal is to understand where failures cluster.
 
 ---
 
-## Step 10: Discover Behavioral Structure
+## Step 11: Discover Behavioral Structure
 
 Only after analyzing failure distributions should higher-level theories be introduced.
 
@@ -253,6 +343,7 @@ Possible examples:
 * Planning Pressure
 * Clarification Pressure
 * State Tracking Pressure
+* Communication Pressure
 
 These are hypotheses that emerge from the data.
 
@@ -268,9 +359,12 @@ TrajectoryReport
 
 Human-readable explanation of:
 
-* What happened
-* Where divergence occurred
-* Which failure type was responsible
+* Outcome
+* Reward Breakdown
+* Primary Failure Channel
+* Root Cause
+* Impact
+* Supporting Evidence
 
 ---
 
@@ -281,6 +375,7 @@ TrajectoryAnalysisReport
 Includes:
 
 * Success Rate
+* Reward Breakdown Statistics
 * Failure Distribution
 * Failure Heatmaps
 * Failure Examples
@@ -307,3 +402,7 @@ We aim to understand agent behavior before attempting to improve it.
 Outcome metrics tell us whether an agent succeeded.
 
 Trajectory analysis tells us why.
+
+Reward breakdowns tell us where.
+
+Failure reports tell us how.
