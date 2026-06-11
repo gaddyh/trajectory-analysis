@@ -1,5 +1,87 @@
 # Trajectory Analysis for Agent Reliability
 
+## Quick Start
+
+```bash
+git clone https://github.com/gaddyh/trajectory-analysis
+cd trajectory-analysis
+pip install -r requirements.txt
+python analyze_one.py
+```
+
+Analyzes a single Tau2 simulation and produces a deterministic TrajectoryReport explaining outcome, reward breakdown, failure channel, root cause, and impact.
+
+## Example Output
+
+Running:
+
+```bash
+python analyze_one.py
+```
+
+Produces a deterministic TrajectoryReport:
+
+```text
+Trajectory report
+=================
+
+Task ID: 2
+Simulation ID: e6b14abb-96e3-4f13-b0b2-9375748e5b35
+Success: False
+Reward: 0.0
+
+Executive Summary
+-----------------
+FAIL — communication failure. Database action succeeded, but required user-facing information was wrong or missing. Required information `10` was not communicated.
+
+Reward Breakdown
+----------------
+DB: 1.0
+NL_ASSERTION: 0.0
+
+Failure Channel
+---------------
+NL_ASSERTION
+
+Diagnosis
+---------
+Primary failure: communication
+
+Root cause:
+Required information `10` was not communicated.
+
+Impact:
+Database state was correct, but required user-facing information was not communicated correctly.
+
+Counts
+------
+Matched actions: 8/11
+Exact argument matches: 7/8
+Extra actions: 2
+Missing actions: 3
+
+Trajectory Variation
+--------------------
+Type: Divergence
+
+Extra actions: 2
+Missing actions: 3
+
+Impact:
+Requires interpretation against reward channels.
+```
+
+This report shows:
+
+* Outcome
+* Reward channel breakdown
+* Failure localization
+* Root cause
+* Impact assessment
+* Trajectory variation metrics
+
+The goal is to transform a benchmark score into an explainable behavioral diagnosis.
+
 ## Motivation
 
 Most agent benchmarks report a single outcome metric:
@@ -51,6 +133,15 @@ Next milestone:
 - Failure distributions
 - Failure hotspots
 - Representative failure examples
+
+---
+
+## Research Journal
+
+The reasoning behind this framework is documented session by session:
+
+- [Session 1 — Single-Run Analysis](SESSION_1_FINDINGS.md)
+- [Session 2 — Dataset-Level Findings](SESSION_2_FINDINGS.md)
 
 ---
 
