@@ -51,6 +51,17 @@ def build_report(
         comparison=comparison,
     )
 
+    expected_reads, expected_writes = count_expected_by_type(task)
+
+    matched_reads, matched_writes = count_matched_by_type(
+        task=task,
+        comparison=comparison,
+    )
+
+    behavioral_fidelity = build_behavioral_fidelity(comparison)
+
+    potential_benchmark_issue = detect_potential_benchmark_issue(simulation)
+
     return TrajectoryReport(
         task_id=task.task_id,
         simulation_id=simulation.simulation_id,
@@ -69,6 +80,12 @@ def build_report(
         primary_failure=primary_failure,
         root_cause=root_cause,
         impact=impact,
+        expected_reads=expected_reads,
+        expected_writes=expected_writes,
+        matched_reads=matched_reads,
+        matched_writes=matched_writes,
+        behavioral_fidelity=behavioral_fidelity,
+        potential_benchmark_issue=potential_benchmark_issue,
     )
 
 
@@ -169,6 +186,12 @@ def format_report(report: TrajectoryReport) -> str:
     lines.append(f"Root cause: {report.root_cause}")
     lines.append(f"Impact: {report.impact}")
 
+    if report.potential_benchmark_issue:
+        lines.append("")
+        lines.append("Potential Benchmark Issue")
+        lines.append("-------------------------")
+        lines.append(report.potential_benchmark_issue)
+
     if report.nl_assertions:
         lines.append("")
         lines.append("NL Assertions")
@@ -204,17 +227,60 @@ def format_report(report: TrajectoryReport) -> str:
     lines.append(f"Missing actions: {report.missing_actions}")
 
     lines.append("")
-    lines.append("Trajectory Divergence")
+    lines.append("Read / Write Coverage")
     lines.append("---------------------")
+    lines.append(
+        f"Read coverage: "
+        f"{report.matched_reads}/{report.expected_reads}"
+    )
+    lines.append(
+        f"Write coverage: "
+        f"{report.matched_writes}/{report.expected_writes}"
+    )
 
-    if report.missing_actions > 0 or report.extra_actions > 0:
+    lines.append("")
+    lines.append("Behavioral Fidelity")
+    lines.append("-------------------")
+    lines.append(
+        f"Expected trajectory match: "
+        f"{report.behavioral_fidelity:.0%}"
+    )
+    lines.append(
+        f"Outcome success: "
+        f"{'PASS' if report.success else 'FAIL'}"
+    )
+
+    if report.success and report.behavioral_fidelity < 1.0:
         lines.append(
-            "Secondary divergence detected in the observed tool trajectory."
+            "Interpretation: Agent achieved the correct outcome while "
+            "following a different trajectory than the reference."
         )
+            
+    lines.append("")
+    lines.append("Trajectory Variation")
+    lines.append("--------------------")
+
+    if report.extra_actions > 0 and report.missing_actions == 0:
+        lines.append("Type: Additional Information Gathering")
+        lines.append(f"Observed: {report.extra_actions} additional action(s)")
+        lines.append("Impact: None directly attributable to trajectory variation")
+        lines.append("Assessment: Expected trajectory was covered; extra actions require review only if they affected reward.")
+    elif report.success and report.missing_actions > 0:
+        lines.append("Type: Read Simplification / Alternative Trajectory")
+        lines.append(f"Extra actions: {report.extra_actions}")
+        lines.append(f"Missing actions: {report.missing_actions}")
+        lines.append("Impact: None detected")
+        lines.append("Assessment: Variation was benign because all reward channels passed.")
+    elif report.missing_actions > 0 or report.extra_actions > 0:
+        lines.append("Type: Divergence")
+        lines.append(f"Extra actions: {report.extra_actions}")
+        lines.append(f"Missing actions: {report.missing_actions}")
+        lines.append("Impact: Requires interpretation against reward channels.")
     else:
-        lines.append(
-            "No missing or extra actions detected by the first-pass comparer."
-        )
+        lines.append("No missing or extra actions detected.")
+        lines.append("Argument-level differences may still exist.")
+
+
 
     lines.append("")
     lines.append("Summary")
@@ -348,3 +414,87 @@ def build_executive_summary(
         f"FAIL — {report.primary_failure}. "
         f"{report.impact}"
     )
+
+
+def is_read_action_name(name: str) -> bool:
+    return name.startswith(("get_", "find_", "list_"))
+
+
+def is_write_action_name(name: str) -> bool:
+    return name.startswith(("return_", "exchange_", "modify_", "cancel_", "transfer_"))
+
+
+def count_expected_by_type(task: Task) -> tuple[int, int]:
+    expected_reads = 0
+    expected_writes = 0
+
+    for action in task.expected_actions:
+        name = action.get("name", "")
+
+        if is_read_action_name(name):
+            expected_reads += 1
+        elif is_write_action_name(name):
+            expected_writes += 1
+
+    return expected_reads, expected_writes
+
+
+def count_matched_by_type(
+    task: Task,
+    comparison: TrajectoryComparison,
+) -> tuple[int, int]:
+    matched_reads = 0
+    matched_writes = 0
+
+    for match in comparison.matched_actions:
+        expected_action = task.expected_actions[match.expected_idx]
+        name = expected_action.get("name", "")
+
+        if is_read_action_name(name):
+            matched_reads += 1
+        elif is_write_action_name(name):
+            matched_writes += 1
+
+    return matched_reads, matched_writes
+
+
+def build_behavioral_fidelity(
+    comparison: TrajectoryComparison,
+) -> float:
+    if comparison.expected_count == 0:
+        return 1.0
+
+    return len(comparison.matched_actions) / comparison.expected_count
+
+
+def detect_potential_benchmark_issue(
+    simulation: Simulation,
+) -> str | None:
+    if simulation.reward_breakdown.get("DB") != 1.0:
+        return None
+
+    if simulation.reward_breakdown.get("NL_ASSERTION") != 0.0:
+        return None
+
+    trigger_phrases = [
+        "agent's calculation is correct",
+        "agent calculation is correct",
+        "agent correctly",
+        "agent accurately",
+        "correct based on",
+    ]
+
+    for assertion in simulation.nl_assertions:
+        if assertion.get("met") is not False:
+            continue
+
+        justification = assertion.get("justification", "")
+        lowered = justification.lower()
+
+        if any(phrase in lowered for phrase in trigger_phrases):
+            return (
+                "Agent output appears internally consistent, but the "
+                "benchmark NL assertion was not met. Manual review may be needed."
+            )
+
+    return None

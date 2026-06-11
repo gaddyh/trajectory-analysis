@@ -35,5 +35,5 @@ def run(path, task_id):
 
 
 if __name__ == "__main__":
-    #for i in range(0, 4):
-    run("data/raw/simulations/baseline_retail_20/results.json", "2")
+    for i in range(25, 30):
+        run("data/raw/simulations/baseline_retail_30/results.json", str(i))

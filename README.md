@@ -257,21 +257,36 @@ The correct tool was selected with incorrect arguments.
 
 The final environment state did not match expectations.
 
-### Trajectory Divergence
+### Trajectory Variation
 
-The agent followed an alternative information-gathering strategy.
+The agent followed a different trajectory than the benchmark reference.
 
-Example:
+Examples:
 
-```text
 Expected:
 get_product_details(...)
 
 Actual:
 list_all_product_types(...)
-```
 
-Trajectory divergence may or may not affect reward.
+or
+
+Expected:
+find_user(...)
+
+Actual:
+find_user(...)
+get_user_details(...)
+
+Trajectory variation may be:
+
+- Beneficial
+- Neutral
+- Harmful
+
+Trajectory variation is not automatically a failure.
+
+Only reward channels and task outcomes determine whether the variation was successful.
 
 The taxonomy should evolve as new failure modes are discovered.
 

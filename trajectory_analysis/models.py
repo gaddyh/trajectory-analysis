@@ -43,7 +43,17 @@ class TrajectoryReport:
     extra_actions: int
     missing_actions: int
 
+    matched_reads: int
+    expected_reads: int
+    matched_writes: int
+    expected_writes: int
+
+    behavioral_fidelity: float
+    potential_benchmark_issue: str | None
+
     failure_channel: str | None
+
+    summary: str
 
     nl_assertions: list[dict[str, Any]]
     communicate_checks: list[dict[str, Any]]
@@ -52,7 +62,6 @@ class TrajectoryReport:
     root_cause: str | None
     impact: str | None
 
-    summary: str
     executive_summary: str | None = None
 
 @dataclass
