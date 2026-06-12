@@ -135,6 +135,18 @@ The goal is to evaluate observable agent behavior.
 
 ---
 
+## Three Evaluation Dimensions
+
+This framework separates agent behavior into three dimensions:
+
+- **Outcome Quality** — Did the task succeed? (Reward)
+- **Trajectory Fidelity** — How closely did the agent follow the expected trajectory?
+- **Reward-Channel Quality** — Which evaluation channels (DB, NL_ASSERTION, etc.) passed or failed?
+
+Treating these as independent dimensions — rather than collapsing them into a single score — is what allows behavior to be diagnosed rather than just measured.
+
+---
+
 ## Current Status
 
 Implemented:
