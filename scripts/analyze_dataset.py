@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from trajectory_analysis.compare import compare_expected_to_actual
-from trajectory_analysis.loaders import load_task_and_simulation
+from trajectory_analysis.loaders import load_task_and_simulation, load_task_ids
 from trajectory_analysis.report import build_report, format_percent
 from trajectory_analysis.trajectory import extract_trajectory
 from collections import Counter
@@ -146,10 +146,17 @@ def main() -> None:
 
     rows = []
 
-    for task_id in range(args.start, args.start + args.limit):
+
+    task_ids = load_task_ids(args.results_path)
+
+    selected_task_ids = task_ids[
+        args.start : args.start + args.limit
+    ]
+
+    for task_id in selected_task_ids:
         task, simulation = load_task_and_simulation(
             args.results_path,
-            task_id=str(task_id),
+            task_id=task_id,
         )
 
         trajectory = extract_trajectory(simulation)

@@ -14,7 +14,14 @@ def load_results(path: str | Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
+def load_task_ids(results_path: str | Path) -> list[str]:
+    data = load_results(results_path)
 
+    return [
+        str(task["id"])
+        for task in data.get("tasks", [])
+    ]
+    
 def load_task(results_path: str | Path, task_id: str = "0") -> Task:
     data = load_results(results_path)
 
