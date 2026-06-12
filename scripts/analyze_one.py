@@ -38,7 +38,7 @@ def run(path, task_id):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task-id", required=True, help="Task ID to analyze")
+    parser.add_argument("--task-id", default="2", help="Task ID to analyze")
     parser.add_argument(
         "--path",
         default="data/raw/simulations/baseline_retail_100/results.json",

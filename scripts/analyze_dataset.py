@@ -240,6 +240,6 @@ def print_table(rows: list[dict[str, str]]) -> None:
             )
         )
 
-
+#todo - load results.json from tau2 e.g: https://github.com/amazon-agi/tau2-bench-verified/blob/main/data/tau2/results/final/gpt-4.1-2025-04-14_telecom_default_gpt-4.1-2025-04-14_4trials.json
 if __name__ == "__main__":
     main()
