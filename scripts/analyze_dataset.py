@@ -5,7 +5,7 @@ from pathlib import Path
 
 from trajectory_analysis.compare import compare_expected_to_actual
 from trajectory_analysis.loaders import load_task_and_simulation
-from trajectory_analysis.report import build_report
+from trajectory_analysis.report import build_report, format_percent
 from trajectory_analysis.trajectory import extract_trajectory
 from collections import Counter
 
@@ -25,31 +25,38 @@ def print_summary(rows: list[dict[str, str]]) -> None:
     db_failed = sum(1 for row in rows if row["db"] == "0")
     nl_failed = sum(1 for row in rows if row["nl"] == "0")
 
-    fidelities = [
-        parse_percent(row["fidelity"])
+    composite_fidelities = [
+        parse_percent(row["comp_fid"])
         for row in rows
+        if row["comp_fid"] != "N/A"
     ]
 
-    avg_fidelity = (
-        sum(fidelities) / len(fidelities)
-        if fidelities
+    avg_composite_fidelity = (
+        sum(composite_fidelities) / len(composite_fidelities)
+        if composite_fidelities
         else 0.0
     )
 
-    min_fidelity = min(fidelities) if fidelities else 0.0
+    min_composite_fidelity = (
+        min(composite_fidelities)
+        if composite_fidelities
+        else 0.0
+    )
 
-    successful_low_fidelity = sum(
+    successful_low_composite_fidelity = sum(
         1
         for row in rows
         if row["result"] == "PASS"
-        and parse_percent(row["fidelity"]) < 1.0
+        and row["comp_fid"] != "N/A"
+        and parse_percent(row["comp_fid"]) < 1.0
     )
 
-    failed_full_fidelity = sum(
+    failed_full_composite_fidelity = sum(
         1
         for row in rows
         if row["result"] == "FAIL"
-        and parse_percent(row["fidelity"]) == 1.0
+        and row["comp_fid"] != "N/A"
+        and parse_percent(row["comp_fid"]) == 1.0
     )
 
     total_extra = sum(int(row["extra"]) for row in rows)
@@ -87,15 +94,15 @@ def print_summary(rows: list[dict[str, str]]) -> None:
     print("")
     print("Behavioral Fidelity")
     print("-------------------")
-    print(f"Average fidelity: {avg_fidelity:.1%}")
-    print(f"Min fidelity: {min_fidelity:.1%}")
+    print(f"Average fidelity: {avg_composite_fidelity:.1%}")
+    print(f"Min fidelity: {min_composite_fidelity:.1%}")
     print(
         "Successful runs with fidelity < 100%: "
-        f"{successful_low_fidelity}"
+        f"{successful_low_composite_fidelity}"
     )
     print(
         "Failed runs with fidelity = 100%: "
-        f"{failed_full_fidelity}"
+        f"{failed_full_composite_fidelity}"
     )
 
     print("")
@@ -112,7 +119,7 @@ def print_summary(rows: list[dict[str, str]]) -> None:
 
 def parse_percent(value: str) -> float:
     return float(value.rstrip("%")) / 100.0
-    
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run compact trajectory analysis over N Tau2 tasks."
@@ -166,7 +173,9 @@ def build_row(report) -> dict[str, str]:
         "db": format_score(db),
         "nl": format_score(nl),
         "failure": report.primary_failure or "-",
-        "fidelity": f"{report.behavioral_fidelity:.0%}",
+        "action_fid": format_percent(report.action_fidelity),
+        "arg_fid": format_percent(report.argument_fidelity),
+        "comp_fid": format_percent(report.composite_fidelity),
         "reads": f"{report.matched_reads}/{report.expected_reads}",
         "writes": f"{report.matched_writes}/{report.expected_writes}",
         "extra": str(report.extra_actions),

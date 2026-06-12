@@ -58,7 +58,9 @@ def build_report(
         comparison=comparison,
     )
 
-    behavioral_fidelity = build_behavioral_fidelity(comparison)
+    action_fidelity = build_action_fidelity(comparison)
+    argument_fidelity = build_argument_fidelity(comparison)
+    composite_fidelity = build_composite_fidelity(comparison)
 
     potential_benchmark_issue = detect_potential_benchmark_issue(simulation)
 
@@ -84,7 +86,9 @@ def build_report(
         expected_writes=expected_writes,
         matched_reads=matched_reads,
         matched_writes=matched_writes,
-        behavioral_fidelity=behavioral_fidelity,
+        action_fidelity=action_fidelity,
+        argument_fidelity=argument_fidelity,
+        composite_fidelity=composite_fidelity,
         potential_benchmark_issue=potential_benchmark_issue,
     )
 
@@ -242,15 +246,19 @@ def format_report(report: TrajectoryReport) -> str:
     lines.append("Behavioral Fidelity")
     lines.append("-------------------")
     lines.append(
-        f"Expected trajectory match: "
-        f"{report.behavioral_fidelity:.0%}"
+        f"Action fidelity: {format_percent(report.action_fidelity)}"
     )
     lines.append(
-        f"Outcome success: "
-        f"{'PASS' if report.success else 'FAIL'}"
+        f"Argument fidelity: {format_percent(report.argument_fidelity)}"
+    )
+    lines.append(
+        f"Composite fidelity: {format_percent(report.composite_fidelity)}"
+    )
+    lines.append(
+        f"Outcome success: {'PASS' if report.success else 'FAIL'}"
     )
 
-    if report.success and report.behavioral_fidelity < 1.0:
+    if report.success and report.action_fidelity is not None and report.action_fidelity < 1.0:
         lines.append(
             "Interpretation: Agent achieved the correct outcome while "
             "following a different trajectory than the reference."
@@ -458,15 +466,50 @@ def count_matched_by_type(
     return matched_reads, matched_writes
 
 
-def build_behavioral_fidelity(
+def build_action_fidelity(
     comparison: TrajectoryComparison,
-) -> float:
+) -> float | None:
     if comparison.expected_count == 0:
-        return 1.0
+        return None
 
     return len(comparison.matched_actions) / comparison.expected_count
 
 
+def build_argument_fidelity(
+    comparison: TrajectoryComparison,
+) -> float | None:
+    matched = len(comparison.matched_actions)
+
+    if matched == 0:
+        return None
+
+    exact = sum(
+        1
+        for match in comparison.matched_actions
+        if match.exact_match
+    )
+
+    return exact / matched
+
+
+def build_composite_fidelity(
+    comparison: TrajectoryComparison,
+) -> float | None:
+    action_fidelity = build_action_fidelity(comparison)
+    argument_fidelity = build_argument_fidelity(comparison)
+
+    if action_fidelity is None or argument_fidelity is None:
+        return None
+
+    return action_fidelity * argument_fidelity
+
+
+def format_percent(value: float | None) -> str:
+    if value is None:
+        return "N/A"
+
+    return f"{value:.0%}"
+    
 def detect_potential_benchmark_issue(
     simulation: Simulation,
 ) -> str | None:

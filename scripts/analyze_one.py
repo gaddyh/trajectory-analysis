@@ -1,3 +1,5 @@
+import argparse
+
 from trajectory_analysis.compare import (
     compare_expected_to_actual,
     format_comparison,
@@ -35,5 +37,12 @@ def run(path, task_id):
 
 
 if __name__ == "__main__":
-    for i in range(25, 30):
-        run("data/raw/simulations/baseline_retail_30/results.json", str(i))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task-id", required=True, help="Task ID to analyze")
+    parser.add_argument(
+        "--path",
+        default="data/raw/simulations/baseline_retail_100/results.json",
+        help="Path to results JSON",
+    )
+    args = parser.parse_args()
+    run(args.path, args.task_id)

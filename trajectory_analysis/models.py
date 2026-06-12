@@ -48,7 +48,10 @@ class TrajectoryReport:
     matched_writes: int
     expected_writes: int
 
-    behavioral_fidelity: float
+    action_fidelity: float | None
+    argument_fidelity: float | None
+    composite_fidelity: float | None
+    
     potential_benchmark_issue: str | None
 
     failure_channel: str | None

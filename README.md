@@ -10,6 +10,32 @@ python3 scripts/analyze_one.py
 
 Analyzes a single Tau2 simulation and produces a deterministic TrajectoryReport explaining outcome, reward breakdown, failure channel, root cause, and impact.
 
+### Determinism
+
+The framework does not use an LLM to generate diagnoses.
+
+Given the same Tau2 evaluation artifacts, it will always produce the same report.
+
+Diagnoses are derived deterministically from:
+
+* Reward breakdowns
+* Communication checks
+* Natural-language assertion results
+* Expected vs observed trajectory comparisons
+
+For example:
+
+```text
+DB = 1.0
+NL_ASSERTION = 0.0
+```
+
+will always be classified as a communication failure.
+
+The framework interprets benchmark outputs deterministically.
+
+It does not claim that the benchmark evaluator itself is deterministic.
+
 ## Example Output
 
 **Single run:**
@@ -448,7 +474,7 @@ The taxonomy should evolve as new failure modes are discovered.
 
 ## Step 9: Generate Trajectory Reports
 
-For every simulation we generate a deterministic TrajectoryReport.
+For every simulation we generate a deterministic TrajectoryReport from the benchmark evaluation artifacts.
 
 Example:
 
@@ -488,7 +514,7 @@ Compute:
 * Common Failure Paths
 * Failure Hotspots
 
-Example:
+Illustrative example:
 
 ```text
 Communication: 34%
