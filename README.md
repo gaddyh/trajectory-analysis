@@ -5,8 +5,7 @@
 ```bash
 git clone https://github.com/gaddyh/trajectory-analysis
 cd trajectory-analysis
-pip install -e .
-python3 scripts/analyze_one.py
+PYTHONPATH=. python3 scripts/analyze_one.py --task-id 2
 ```
 
 Analyzes a single Tau2 simulation and produces a deterministic TrajectoryReport explaining outcome, reward breakdown, failure channel, root cause, and impact.
@@ -42,13 +41,6 @@ It does not claim that the benchmark evaluator itself is deterministic.
 **Single run:**
 ```bash
 python3 scripts/analyze_one.py
-```
-
-**Single run with explicit task and path:**
-```bash
-python3 scripts/analyze_one.py \
-  --path data/raw/simulations/baseline_retail_100/results.json \
-  --task-id 2
 ```
 
 **Dataset analysis:**
