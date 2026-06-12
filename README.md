@@ -193,15 +193,6 @@ Next milestone:
 
 ---
 
-## Research Journal
-
-The reasoning behind this framework is documented session by session:
-
-- [Session 1 — Single-Run Analysis](SESSION_1_FINDINGS.md)
-- [Session 2 — Dataset-Level Findings](SESSION_2_FINDINGS.md)
-
----
-
 # Core Question
 
 How much additional insight can trajectory analysis and reward-channel analysis provide beyond outcome metrics alone?
