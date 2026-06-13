@@ -61,9 +61,16 @@ class FailureTableRow(BaseModel):
     expected_refs: str
     actual_refs: str
     trace_pattern: str
+    arg_failure_type: str
 
     failed_assertions: str
     communicate_info: str
+
+
+class FailureTypeStats(BaseModel):
+    failure_type: str
+    count: int
+    pct: float
 
 
 class RootCauseRecord(BaseModel):

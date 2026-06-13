@@ -1,4 +1,4 @@
-from trajectory_analysis.models import ArgReference, FailedAction, FailureRecord, FailureTableRow, ToolCall
+from trajectory_analysis.models import ArgReference, FailedAction, FailureRecord, FailureTableRow, FailureTypeStats, ToolCall
 import json
 import argparse
 from pathlib import Path
@@ -24,6 +24,7 @@ def print_console_table(table_rows):
         "expected_refs",
         "actual_refs",
         "trace_pattern",
+        "arg_failure_type",
         "failed_assertions",
         "communicate_info",
     ]
@@ -60,6 +61,7 @@ def write_markdown_table(table_rows, path):
         "expected_refs",
         "actual_refs",
         "trace_pattern",
+        "arg_failure_type",
         "failed_assertions",
         "communicate_info",
     ]
@@ -300,6 +302,28 @@ def make_arg_trace_summary(action: FailedAction) -> dict:
     }
 
 
+_ARG_PATH_TO_FAILURE_TYPE = {
+    "product_id": "WRONG_PRODUCT_LOOKUP",
+    "item_ids": "WRONG_SOURCE_ITEM_SELECTION",
+    "new_item_ids": "WRONG_VARIANT_SELECTION",
+    "payment_method_id": "WRONG_PAYMENT_METHOD",
+    "order_id": "WRONG_ORDER_SELECTION",
+    "reason": "WRONG_REASON",
+}
+
+
+def classify_arg_failure_type(
+    arg_path: str,
+    trace_pattern: str,
+    failed_action_count: int,
+) -> str:
+    if failed_action_count != 1:
+        return "MULTI_FAILED_ACTIONS"
+    if trace_pattern == "MISSING_ACTUAL_CALL" or arg_path == "$":
+        return "MISSING_ACTION"
+    return _ARG_PATH_TO_FAILURE_TYPE.get(arg_path, "UNKNOWN")
+
+
 def failure_record_to_table_row(record: FailureRecord) -> FailureTableRow:
     arg_trace = {
         "arg_path": "-",
@@ -312,6 +336,12 @@ def failure_record_to_table_row(record: FailureRecord) -> FailureTableRow:
 
     if record.failed_action_count == 1 and record.failed_actions:
         arg_trace = make_arg_trace_summary(record.failed_actions[0])
+
+    arg_failure_type = classify_arg_failure_type(
+        arg_path=str(arg_trace["arg_path"]),
+        trace_pattern=str(arg_trace["trace_pattern"]),
+        failed_action_count=record.failed_action_count,
+    )
 
     return FailureTableRow(
         task=str(record.task_id),
@@ -328,6 +358,7 @@ def failure_record_to_table_row(record: FailureRecord) -> FailureTableRow:
         expected_refs=str(arg_trace["expected_refs"]),
         actual_refs=str(arg_trace["actual_refs"]),
         trace_pattern=str(arg_trace["trace_pattern"]),
+        arg_failure_type=arg_failure_type,
         failed_assertions=shorten(
             "; ".join(record.failed_assertions) or "-"
         ),
@@ -344,6 +375,96 @@ def make_table_rows_from_records(
         failure_record_to_table_row(record)
         for record in records
     ]
+
+
+def build_failure_type_stats(
+    rows: list[FailureTableRow],
+) -> list[FailureTypeStats]:
+    from collections import Counter
+
+    counter: Counter = Counter()
+
+    for row in rows:
+        if row.arg_failure_type == "MULTI_FAILED_ACTIONS":
+            continue
+        if not row.arg_failure_type or row.arg_failure_type == "-":
+            continue
+        counter[row.arg_failure_type] += 1
+
+    total = sum(counter.values())
+
+    return [
+        FailureTypeStats(
+            failure_type=ft,
+            count=count,
+            pct=round(100 * count / total, 1),
+        )
+        for ft, count in counter.most_common()
+    ]
+
+
+def build_trace_pattern_stats(
+    rows: list[FailureTableRow],
+) -> list[FailureTypeStats]:
+    from collections import Counter
+
+    counter: Counter = Counter()
+
+    for row in rows:
+        if not row.trace_pattern or row.trace_pattern == "-":
+            continue
+        counter[row.trace_pattern] += 1
+
+    total = sum(counter.values())
+
+    return [
+        FailureTypeStats(
+            failure_type=tp,
+            count=count,
+            pct=round(100 * count / total, 1),
+        )
+        for tp, count in counter.most_common()
+    ]
+
+
+def write_stats_table_markdown(
+    stats: list[FailureTypeStats],
+    title: str,
+    path,
+) -> None:
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(f"\n## {title}\n\n")
+        f.write("| failure_type | count | pct |\n")
+        f.write("| --- | --- | --- |\n")
+        for s in stats:
+            f.write(f"| {s.failure_type} | {s.count} | {s.pct}% |\n")
+
+
+def print_stats_table(stats: list[FailureTypeStats], title: str) -> None:
+    if not stats:
+        print(f"\n{title}: (no data)")
+        return
+
+    col_w = max(len(s.failure_type) for s in stats)
+    col_w = max(col_w, len("failure_type"))
+
+    def line():
+        return "+-" + "-" * col_w + "-+-" + "-" * 5 + "-+-" + "-" * 6 + "-+"
+
+    print(f"\n{title}")
+    print(line())
+    print(f"| {'failure_type'.ljust(col_w)} | {'count'.ljust(5)} | {'pct'.ljust(6)} |")
+    print(line())
+
+    for s in stats:
+        print(
+            f"| {s.failure_type.ljust(col_w)} "
+            f"| {str(s.count).ljust(5)} "
+            f"| {(str(s.pct) + '%').ljust(6)} |"
+        )
+
+    print(line())
+
 
 def iter_messages(sim: dict):
     for key in ("messages", "trajectory", "events", "steps"):

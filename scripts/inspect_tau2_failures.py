@@ -3,7 +3,18 @@ import json
 import argparse
 from pathlib import Path
 
-from trajectory_analysis.utils import load_json, build_failure_records, make_table_rows_from_records, print_console_table, write_markdown_table, print_failure_details
+from trajectory_analysis.utils import (
+    load_json,
+    build_failure_records,
+    make_table_rows_from_records,
+    print_console_table,
+    write_markdown_table,
+    print_failure_details,
+    build_failure_type_stats,
+    build_trace_pattern_stats,
+    print_stats_table,
+    write_stats_table_markdown,
+)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -12,15 +23,17 @@ def main():
     parser.add_argument("--failed-only", action="store_true")
     parser.add_argument("--table", action="store_true")
     parser.add_argument("--md-out", default=None)
+    parser.add_argument("--details", action="store_true", default=False)
     args = parser.parse_args()
 
     data = load_json(args.results_json)
 
     records = build_failure_records(data)
 
-    for record in records:
-        if record.failed_action_count == 1:
-            print_failure_details(record)
+    if args.details:
+        for record in records:
+            if record.failed_action_count == 1:
+                print_failure_details(record)
 
     if args.failed_only:
         records = [r for r in records if r.reward != 1.0]
@@ -34,8 +47,27 @@ def main():
 
         print_console_table(table_dicts)
 
+        print_stats_table(
+            build_failure_type_stats(table_rows),
+            "Failure Type Distribution",
+        )
+        print_stats_table(
+            build_trace_pattern_stats(table_rows),
+            "Trace Pattern Distribution",
+        )
+
         if args.md_out:
             write_markdown_table(table_dicts, args.md_out)
+            write_stats_table_markdown(
+                build_failure_type_stats(table_rows),
+                "Failure Type Distribution",
+                args.md_out,
+            )
+            write_stats_table_markdown(
+                build_trace_pattern_stats(table_rows),
+                "Trace Pattern Distribution",
+                args.md_out,
+            )
             print(f"\nWrote markdown table to: {args.md_out}")
 
         return
