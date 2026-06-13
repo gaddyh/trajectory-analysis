@@ -1,97 +1,81 @@
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, List, Literal
+from pydantic import BaseModel, Field
 
-@dataclass
-class Task:
-    task_id: str
 
-    expected_actions: list[dict[str, Any]]
+class ToolCall(BaseModel):
+    name: str
+    args: dict
+    turn: int | None = None
 
-    reward_basis: list[str]
 
-    communicate_info: list[str]
-    nl_assertions: list[str]
+class ArgReference(BaseModel):
+    source: Literal["expected", "actual"]
+    arg: str
+    value: Any
+    turn: int | None = None
+    role: str | None = None
+    snippet: str
 
-@dataclass
-class Simulation:
-    simulation_id: str
 
+class FailedAction(BaseModel):
+    name: str
+    is_write: bool
+
+    expected_args: dict = Field(default_factory=dict)
+    actual_args: dict | None = None
+    arg_diff: list[dict] = Field(default_factory=list)
+
+    expected_arg_refs: list[ArgReference] = Field(default_factory=list)
+    actual_arg_refs: list[ArgReference] = Field(default_factory=list)
+
+
+class FailureRecord(BaseModel):
+    task_id: int
     reward: float
 
-    messages: list[dict]
+    pattern: str
 
-    action_checks: list[dict]
+    failed_action_count: int
+    failed_write_count: int
 
-    reward_breakdown: dict[str, float]
-    nl_assertions: list[dict[str, Any]]
-    communicate_checks: list[dict[str, Any]]
+    failed_actions: List[FailedAction]
 
-@dataclass
-class TrajectoryReport:
-    task_id: str
-    simulation_id: str
+    failed_assertions: List[str]
+    communicate_info: List[str]
 
-    success: bool
-    reward: float
-
-    reward_breakdown: dict[str, float]
-
-    matched_actions: int
-    expected_actions: int
-    exact_argument_matches: int
-
-    extra_actions: int
-    missing_actions: int
-
-    matched_reads: int
-    expected_reads: int
-    matched_writes: int
-    expected_writes: int
-
-    action_fidelity: float | None
-    argument_fidelity: float | None
-    composite_fidelity: float | None
-    
-    potential_benchmark_issue: str | None
-
-    failure_channel: str | None
-
-    summary: str
-
-    nl_assertions: list[dict[str, Any]]
-    communicate_checks: list[dict[str, Any]]
-
-    primary_failure: str | None
-    root_cause: str | None
-    impact: str | None
-
-    executive_summary: str | None = None
-
-@dataclass
-class TrajectoryStep:
-    step_idx: int
-    turn_idx: int | None
-    tool_name: str
-    arguments: dict[str, Any]
+    task_description: str
 
 
-@dataclass
-class Trajectory:
-    steps: list[TrajectoryStep]
+class FailureTableRow(BaseModel):
+    task: str
+    reward: str
+    pattern: str
+
+    failed_action_count: int
+    failed_write_count: int
+    failed_actions: str
+
+    arg_path: str
+    expected_value: str
+    actual_value: str
+    expected_refs: str
+    actual_refs: str
+    trace_pattern: str
+
+    failed_assertions: str
+    communicate_info: str
 
 
-@dataclass
-class TaskExplanation:
-    task_id: str
+class RootCauseRecord(BaseModel):
+    task_id: int
 
-    user_goals: list[str]
+    failed_action: str
 
-    information_requirements: list[str]
+    expected_args: dict
+    actual_args: dict
 
-    expected_reads: list[str]
+    root_cause_label: str
 
-    expected_writes: list[str]
+    evidence_turns: list[int]
 
-    communication_requirements: list[str]
-
-    reward_basis: list[str]
+    explanation: str

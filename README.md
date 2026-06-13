@@ -40,7 +40,7 @@ It does not claim that the benchmark evaluator itself is deterministic.
 
 **Single run:**
 ```bash
-python3 scripts/analyze_one.py --task-id 2 --path data/raw/simulations/baseline_retail_100/results.json
+python3 scripts/analyze_one.py --path data/raw/simulations/baseline_retail_100/results.json --task-id 2
 ```
 
 **Dataset analysis:**
