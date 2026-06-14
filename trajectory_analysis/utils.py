@@ -1,4 +1,5 @@
 from trajectory_analysis.models import ArgReference, ContradictionEvidence, FailedAction, FailureRecord, FailureTableRow, FailureTypeStats, ToolCall
+from trajectory_analysis.signals import detect_contradiction, detect_premature_execution
 import json
 import re
 import argparse
@@ -27,6 +28,7 @@ def print_console_table(table_rows):
         "trace_pattern",
         "arg_failure_type",
         "contradiction_signal",
+        "execution_timing_signal",
         "failed_assertions",
         "communicate_info",
     ]
@@ -65,6 +67,7 @@ def write_markdown_table(table_rows, path):
         "trace_pattern",
         "arg_failure_type",
         "contradiction_signal",
+        "execution_timing_signal",
         "failed_assertions",
         "communicate_info",
     ]
@@ -238,6 +241,8 @@ def build_failure_records(data: dict) -> list[FailureRecord]:
                 action.contradiction_signal = evidence.signal
                 action.contradiction_evidence = evidence
 
+            action.execution_timing_signal = detect_premature_execution(sim, action)
+
             failed_actions.append(action)
 
         records.append(
@@ -356,8 +361,10 @@ def failure_record_to_table_row(record: FailureRecord) -> FailureTableRow:
     )
 
     contradiction_signal = "-"
+    execution_timing_signal = "-"
     if record.failed_action_count == 1 and record.failed_actions:
         contradiction_signal = record.failed_actions[0].contradiction_signal
+        execution_timing_signal = record.failed_actions[0].execution_timing_signal
 
     return FailureTableRow(
         task=str(record.task_id),
@@ -376,6 +383,7 @@ def failure_record_to_table_row(record: FailureRecord) -> FailureTableRow:
         trace_pattern=str(arg_trace["trace_pattern"]),
         arg_failure_type=arg_failure_type,
         contradiction_signal=contradiction_signal,
+        execution_timing_signal=execution_timing_signal,
         failed_assertions=shorten(
             "; ".join(record.failed_assertions) or "-"
         ),
@@ -640,138 +648,6 @@ def find_arg_references(sim: dict, args: dict, source: str):
                 )
 
     return refs
-
-
-NEGATIVE_CLAIM_PATTERNS: list[re.Pattern] = [
-    re.compile(p, re.IGNORECASE)
-    for p in [
-        r"there are no\b",
-        r"there is no\b",
-        r"no matching\b",
-        r"could not find",
-        r"couldn't find",
-        r"not available",
-        r"does not exist",
-        r"don't have any",
-        r"cannot find",
-        r"unable to find",
-        r"not found",
-        r"no .{0,40}available",
-    ]
-]
-
-
-def extract_differing_values(
-    diff_entry: dict,
-) -> tuple[str, str]:
-    expected = diff_entry.get("expected")
-    actual = diff_entry.get("actual")
-
-    if isinstance(expected, list) and isinstance(actual, list):
-        exp_set = set(str(v) for v in expected)
-        act_set = set(str(v) for v in actual)
-        exp_only = exp_set - act_set
-        act_only = act_set - exp_set
-        exp_val = next(iter(exp_only), str(expected[0]) if expected else "")
-        act_val = next(iter(act_only), str(actual[0]) if actual else "")
-        return exp_val, act_val
-
-    return str(expected or ""), str(actual or "")
-
-
-def find_preceding_assistant_text(
-    sim: dict,
-    before_turn: int,
-) -> tuple[int, str] | None:
-    result = None
-
-    for turn, msg in iter_messages(sim):
-        if turn >= before_turn:
-            break
-
-        role = msg.get("role") or msg.get("sender") or msg.get("type")
-        if role != "assistant":
-            continue
-
-        content = msg.get("content")
-        if not content or not str(content).strip() or str(content).strip().lower() == "none":
-            continue
-
-        result = (turn, str(content))
-
-    return result
-
-
-def _extract_sentence_around(text: str, match: re.Match) -> str:
-    start = max(0, match.start() - 20)
-    end = min(len(text), match.end() + 120)
-    snippet = text[start:end].replace("\n", " ").strip()
-    return snippet
-
-
-def _extract_value_snippet(text: str, value: str) -> str:
-    idx = text.find(value)
-    if idx == -1:
-        return ""
-    start = max(0, idx - 60)
-    end = min(len(text), idx + len(value) + 60)
-    return text[start:end].replace("\n", " ").strip()
-
-
-def detect_contradiction(
-    sim: dict,
-    action: "FailedAction",
-) -> "ContradictionEvidence | None":
-    if action.actual_call_turn is None:
-        return None
-    if not action.arg_diff:
-        return None
-
-    first_diff = action.arg_diff[0]
-    if first_diff.get("kind") == "missing_actual_call":
-        return None
-
-    expected_val, actual_val = extract_differing_values(first_diff)
-    if not expected_val or not actual_val or expected_val == actual_val:
-        return None
-
-    preceding = find_preceding_assistant_text(sim, action.actual_call_turn)
-    if preceding is None:
-        return None
-
-    msg_turn, msg_text = preceding
-
-    if expected_val not in msg_text:
-        return None
-    if actual_val not in msg_text:
-        return None
-
-    negative_claim = ""
-    for pattern in NEGATIVE_CLAIM_PATTERNS:
-        m = pattern.search(msg_text)
-        if m:
-            negative_claim = _extract_sentence_around(msg_text, m)
-            break
-
-    if not negative_claim:
-        return None
-
-    snippets = [
-        s for s in [
-            _extract_value_snippet(msg_text, expected_val),
-            _extract_value_snippet(msg_text, actual_val),
-        ]
-        if s
-    ]
-
-    return ContradictionEvidence(
-        signal="CONTRADICTORY_SUMMARY",
-        turn=msg_turn,
-        negative_claim=negative_claim,
-        expected_value=expected_val,
-        actual_value=actual_val,
-        contradicting_snippets=snippets,
-    )
 
 
 def print_failure_details(record: FailureRecord):

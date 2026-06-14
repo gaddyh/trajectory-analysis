@@ -3,3 +3,4 @@ pytest
 python-dotenv
 pandas
 rich
+openai

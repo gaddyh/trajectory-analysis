@@ -40,6 +40,7 @@ class FailedAction(BaseModel):
     actual_call_turn: int | None = None
     contradiction_signal: str = "-"
     contradiction_evidence: ContradictionEvidence | None = None
+    execution_timing_signal: str = "-"
 
 
 class FailureRecord(BaseModel):
@@ -76,6 +77,7 @@ class FailureTableRow(BaseModel):
     trace_pattern: str
     arg_failure_type: str
     contradiction_signal: str
+    execution_timing_signal: str
 
     failed_assertions: str
     communicate_info: str
@@ -99,4 +101,19 @@ class RootCauseRecord(BaseModel):
 
     evidence_turns: list[int]
 
+    explanation: str
+
+
+class LLMProbeResult(BaseModel):
+    task_id: int
+    failed_action: str
+    arg_failure_type: str
+    trace_pattern: str
+    deterministic_signals: list[str]
+    llm_proposed_signal: str
+    evidence_turn: int | None
+    why_expected_correct: str
+    why_actual_chosen: str
+    deterministically_detectable: bool
+    confidence: float
     explanation: str
