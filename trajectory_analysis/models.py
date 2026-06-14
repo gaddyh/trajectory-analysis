@@ -17,6 +17,15 @@ class ArgReference(BaseModel):
     snippet: str
 
 
+class ContradictionEvidence(BaseModel):
+    signal: str
+    turn: int
+    negative_claim: str
+    expected_value: str
+    actual_value: str
+    contradicting_snippets: list[str]
+
+
 class FailedAction(BaseModel):
     name: str
     is_write: bool
@@ -27,6 +36,10 @@ class FailedAction(BaseModel):
 
     expected_arg_refs: list[ArgReference] = Field(default_factory=list)
     actual_arg_refs: list[ArgReference] = Field(default_factory=list)
+
+    actual_call_turn: int | None = None
+    contradiction_signal: str = "-"
+    contradiction_evidence: ContradictionEvidence | None = None
 
 
 class FailureRecord(BaseModel):
@@ -62,6 +75,7 @@ class FailureTableRow(BaseModel):
     actual_refs: str
     trace_pattern: str
     arg_failure_type: str
+    contradiction_signal: str
 
     failed_assertions: str
     communicate_info: str
